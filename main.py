@@ -2,19 +2,36 @@ import cv2
 import numpy as np
 from PIL import Image
 
-img = cv2.imread('SIGN.JPG')
+def remove_background_and_keep_signature(image_path, output_path):
+    # Load the image
+    image = cv2.imread(image_path)
 
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-_, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    # Apply threshold to identify light areas (the background)
+    _, binary_image = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
 
-contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Invert the binary image to make signature part white and background black
+    binary_image_inv = cv2.bitwise_not(binary_image)
 
-largest_contour = max(contours, key=cv2.contourArea)
+    # Create a mask where background (white areas) become transparent
+    mask = binary_image_inv
 
-mask = np.zeros_like(gray)
-cv2.drawContours(mask, [largest_contour], -1, 255, -1)
+    # Convert image to RGBA (add alpha channel)
+    b, g, r = cv2.split(image)
 
-result = cv2.bitwise_and(img, img, mask=mask)
+    # Merge the RGB channels with the mask as the alpha channel
+    rgba_image = cv2.merge([b, g, r, mask])
 
-cv2.imwrite('signature_no_background.jpg', result)
+    # Convert result to PIL format and save as PNG with transparency
+    result_pil = Image.fromarray(rgba_image)
+    result_pil.save(output_path, format="PNG")
+
+    print(f"Processed image saved as {output_path}")
+
+# Example usage
+input_image_path = 'sign1.jpg'  # Replace with your image file path
+output_image_path = '1.png'  # Replace with desired output file path
+
+remove_background_and_keep_signature(input_image_path, output_image_path)
